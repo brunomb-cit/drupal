@@ -1,0 +1,230 @@
+<?php
+function mymetatags_permission() {
+	return array(
+   'manage page meta tags' => array(
+      'title' => t('Manage page meta tags'),
+			'description' => t('Perform meta tags administration for my module.'),
+    ),
+	);
+}
+
+function mymetatags_menu() {
+	$items['admin/config/search/mymetatags'] = array(
+  	'title' => 'My meta tags',
+  	'access arguments' => array('manage page meta tags'),
+  	'page callback' => 'list_mymetatags',
+  	'type' => MENU_NORMAL_ITEM,
+  	'file' => 'mymetatags.pages.inc',
+  	'file path' => drupal_get_path('module', 'mymetatags') .'/inc',
+	);
+	$items['admin/config/search/mymetatags/list'] = array(
+  	'title' => 'List',  	
+  	'type' => MENU_DEFAULT_LOCAL_TASK,
+	);
+  $items['admin/config/search/mymetatags/update'] = array(
+    'title' => 'Update',
+    'access arguments' => array('manage page meta tags'),
+    'page callback' => 'update_mymetatags',
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'mymetatags.pages.inc',
+    'file path' => drupal_get_path('module', 'mymetatags') .'/inc',
+  );
+  $items['admin/config/search/mymetatags/configure'] = array(
+    'title' => t('Configuration'),
+    'access arguments' => array('manage page meta tags'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('mymetatags_config_form'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'mymetatags.pages.inc',
+    'file path' => drupal_get_path('module', 'mymetatags') .'/inc',
+  );
+  $items['admin/config/search/mymetatags/%mymetatags_map'] = array(
+    'title' => 'Load meta tags by id',
+    'access arguments' => array('manage page meta tags'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('mymetatags_edit_form', 4),
+    'type' => MENU_CALLBACK,
+    'file' => 'mymetatags.pages.inc',
+    'file path' => drupal_get_path('module', 'mymetatags') .'/inc',
+  );
+	return $items;
+}
+
+function mymetatags_form_alter(&$form, &$form_state, $form_id) {
+  switch ($form_id) {
+    case 'mymetatags_config_form':
+      $form['#submit'][] = 'mymetatags_config_submit_handler';
+      $form['#validate'][] = 'mymetatags_config_validate_handler';
+    break;
+  }
+}
+
+function mymetatags_map_load($mtid) {
+  if (is_numeric($mtid)) {
+    return db_select('mymetatags', 'm')
+            ->fields('m')
+            ->condition('mtid', $mtid)
+            ->execute()->fetchObject();
+  }
+  return FALSE;
+}
+
+function mymetatags_block_info() {
+  $blocks = array();
+
+  $blocks['metatags_setup'] = array(
+    'info' => t('Metatags setup'),
+    'cache' => DRUPAL_NO_CACHE,
+    'region' => 'sidebar_first',
+    'status' => 1,
+  );
+
+  return $blocks;
+}
+
+function mymetatags_block_view($delta = '') {
+  $block = array();
+
+  switch ($delta) {
+    case 'metatags_setup':
+      $block['subject'] = t('Metatags setup');
+      $block['content'] = drupal_get_form('mymetatags_block_form');
+    break;
+  }
+
+  return $block;
+}
+
+function mymetatags_block_form($form, $form_state) {
+  
+  $current_path = current_path();
+
+  $result = db_select('mymetatags', 'm')
+            ->fields('m')
+            ->condition('normal_path', $current_path)
+            ->execute();
+
+  $result = $result->fetchObject();
+
+  $form['ajax_resp'] = array(
+    '#markup' => '<div id="ajax-response"></div>'
+  );
+
+  $form['path_normal'] = array(
+    '#type' => 'hidden',
+    '#value' => current_path(),
+  );
+
+  $meta_tags = isset($result->data) ? unserialize($result->data) : array('description' => '', 'keywords' => '');
+
+  $form['description'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Description',
+    '#default_value' => $meta_tags['description'],
+    '#size' => 25
+  );
+
+  $form['keywords'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Keywords',
+    '#default_value' => $meta_tags['keywords'],
+    '#size' => 25
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Save',
+    '#ajax' => array(
+      'callback' => 'mymetatags_block_ajax',
+      'wrapper' => 'ajax-response',
+      'effect' => 'fade',
+    ),
+  );
+
+  return $form;
+}
+
+function mymetatags_block_ajax($form, $form_state) {
+  
+  $current_path = $form_state['values']['path_normal'];
+  $description = $form_state['values']['description'];
+  $keywords = $form_state['values']['keywords'];
+  
+  $result = db_select('mymetatags', 'm')
+            ->fields('m', array('mtid'))
+            ->condition('normal_path', $current_path)
+            ->execute();
+
+  $entry_id = $result->fetchObject()->mtid;
+
+  if(empty($keywords) && empty($description)) {
+    $metatags = array();
+  } else {
+    $metatags = array(
+      'description' => $description,
+      'keywords'    => $keywords
+    );    
+  }
+
+  if($entry_id != '') {
+    if(count($metatags)) {
+      db_update('mymetatags')
+        ->fields(array('data' => serialize($metatags)))
+        ->condition('mtid', $entry_id)
+        ->execute();
+      return '<div id="ajax-response">'. t('Metatags updated successfully') .'</div>';
+    } else {
+      db_delete('mymetatags')
+        ->condition('mtid', $entry_id)
+        ->execute();
+      return '<div id="ajax-response">'. t('Metatags and path removed successfully') .'</div>';
+    }
+  } else {
+    if(count($metatags)) {
+      $fields = array(
+          'normal_path' => $current_path,
+          'data' => serialize($metatags)
+        ); 
+      db_insert('mymetatags')
+        ->fields($fields)
+        ->execute();
+      return '<div id="ajax-response">'. t('Metatags and path inserted successfully') .'</div>';
+    }
+  }
+}
+
+function mymetatags_metatags_map() {
+  return array(
+    'product-three' => array(
+      'keywords' => 'a, b, c',
+      'description' => 'Xyz xyz xyz',
+    ),
+    'product-one' => array(
+      'keywords' => 'a1, b3, c4',
+      'description' => 'Xyz xyz xyz',
+    ),
+  );
+}
+
+function mymetatags_preprocess_html($variables) {
+  $normal_path = drupal_get_normal_path($_GET['q']);
+  
+  $result = db_select('mymetatags', 'm')
+              ->fields('m', array('data'))
+              ->condition('normal_path', $normal_path)
+              ->execute()->fetchField();
+  
+  if ($result) {
+    $metatags = unserialize($result);
+    foreach($metatags as $key => $value) {
+      drupal_add_html_head(array(
+        '#type' => 'html_tag',
+        '#tag' => 'meta',
+        '#attributes' => array(
+          'name' => $key,
+          'content' =>  $value,
+        ),
+      ), 'mymetatags_markup_' . $key);
+    }
+  }
+}

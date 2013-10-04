@@ -1,0 +1,29 @@
+<?php
+/**
+* Implements hook_schema
+*/
+function mymetatags_schema() {
+	$schema['mymetatags'] = array(
+    'fields' => array(
+    	'mtid' => array(
+	      'type' => 'serial',
+	      'unsigned' => TRUE,
+    	),
+	    'normal_path' => array(
+	      'type' => 'varchar',
+	      'length' => 255,
+	    ),
+	    'data' => array(
+	      'type' => 'text',
+	    ),
+  	),
+	  'unique keys' => array(
+	    'normal_path' => array('normal_path'),
+	  ),
+	  'primary key' => array('mtid'),
+   	'indexes' => array(
+			'mtid' => array('mtid'),
+    ),
+  );
+  return $schema;
+}

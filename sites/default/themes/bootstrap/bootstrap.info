@@ -1,0 +1,14 @@
+name = Bootstrap
+description = Custom theme with Bootstrap schema
+core = 7.x
+
+stylesheets[all][] = css/bootstrap-responsive.min.css
+stylesheets[all][] = css/bootstrap.min.css
+
+scripts[] = js/bootstrap.min.js
+
+regions[header] = Header
+regions[side_left] = Sidebar Left
+regions[side_right] = Sidebar Right
+regions[content] = Content
+regions[footer] = Footer

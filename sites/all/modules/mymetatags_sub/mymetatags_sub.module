@@ -1,0 +1,9 @@
+<?php
+function mymetatags_sub_metatags_map() {
+  return array(
+    'product-two' => array(
+      'keywords' => 'teste1, teste2, teste3',
+      'description' => 'Teste pagina 2',
+    ),
+  );
+}
