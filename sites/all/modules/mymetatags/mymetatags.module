@@ -141,7 +141,26 @@ function mymetatags_block_form($form, $form_state) {
     ),
   );
 
-  return $form;
+  return theme('custom_block_output', array('form' => $form));
+}
+
+function mymetatags_theme() {
+  return array(
+      'custom_block_output' => array(
+          'variables' => array('form' => NULL),
+        ),
+      'custom_links_output' => array(
+          'variables' => array('links' => NULL),
+        ),      
+    );
+}
+
+function theme_custom_block_output($variables) {
+/*  $output = "";
+  foreach ($variables as $key => $value) {
+    # code...
+  }
+  return $;*/
 }
 
 function mymetatags_block_ajax($form, $form_state) {
