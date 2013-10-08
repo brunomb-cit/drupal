@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-gasgsgs
-=======
-rqrtqtqqt
->>>>>>> 90977539be500c6a4a881f8d5a3833a00209a30a
+Bruno
 CONTENTS OF THIS FILE
 ---------------------
 
